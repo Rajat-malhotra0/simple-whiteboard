@@ -1,50 +1,82 @@
-# React + TypeScript + Vite
+# Simple Whiteboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight whiteboard built with React, TypeScript, Vite, and Tailwind CSS. Draw on a canvas, use the toolbar for tools/colors, undo/redo edits, and export your drawing.
 
-Currently, two official plugins are available:
+## Tech stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 18 + TypeScript
+- Vite 6
+- Tailwind CSS
+- Radix UI + lucide-react icons
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- Node.js 18 or newer
+- pnpm 8+ (we installed pnpm globally; v10 works fine)
 
-- Configure the top-level `parserOptions` property like this:
+## Setup
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```powershell
+# Install dependencies
+pnpm install
+
+# pnpm v10+: approve build scripts (for esbuild binary)
+pnpm approve-builds
+# Select the prompted packages (press Space, then Enter)
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## Run locally
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```powershell
+pnpm dev
 ```
+
+- Open http://localhost:5173 in your browser.
+
+## Build and preview
+
+```powershell
+# Production build
+pnpm build
+
+# Preview the built app
+pnpm preview
+```
+
+The production bundle is emitted to `dist/`.
+
+## Available scripts
+
+- `pnpm dev` — starts Vite dev server
+- `pnpm build` — type-checks and builds for production
+- `pnpm preview` — serves the build from `dist/`
+- `pnpm lint` — runs ESLint over the repo
+
+Note: some scripts pre-run `pnpm install --prefer-offline` to ensure local dependencies are present.
+
+## Troubleshooting
+
+- If you see Vite errors about missing `/assets/index-*.js` in dev, ensure `index.html` uses the dev entry:
+
+  ```html
+  <script type="module" src="/src/main.tsx"></script>
+  ```
+
+- pnpm shows “Ignored build scripts: esbuild” on fresh installs. Run `pnpm approve-builds` and approve `esbuild`.
+
+- Browserslist data may be out of date. It’s safe to refresh occasionally:
+
+  ```powershell
+  npx update-browserslist-db@latest
+  ```
+
+## Project structure
+
+- `src/components` — UI components (Canvas, Toolbar, ErrorBoundary)
+- `src/hooks` — drawing history, export, and mobile helpers
+- `src/lib` — shared utilities
+- `src/types` — canvas-related types
+
+## License
+
+MIT
