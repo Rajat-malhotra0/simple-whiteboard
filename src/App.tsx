@@ -4,6 +4,7 @@ import { Toolbar } from './components/Toolbar';
 import { useDrawingHistory } from './hooks/useDrawingHistory';
 import { useExport } from './hooks/useExport';
 import { DrawingState, Tool } from './types/canvas';
+import { Info } from 'lucide-react';
 import './App.css';
 
 const initialState: DrawingState = {
@@ -101,19 +102,26 @@ function App() {
           />
         </div>
 
-        {/* Instructions Overlay */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg text-sm z-10">
-          <div className="flex flex-wrap justify-center gap-4">
-            <span>Left click + drag to draw</span>
-            <span>Scroll to zoom</span>
-            <span>Ctrl + click to pan</span>
-            <span>Right-click not supported</span>
+        {/* Info Button with Hover Tooltip */}
+        <div className="absolute top-4 right-4 z-10 group">
+          <button className="border-2 border-black text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-black hover:bg-opacity-10 transition-all font-serif font-bold text-2xl">
+            i
+          </button>
+          
+          {/* Tooltip - appears on hover */}
+          <div className="absolute right-0 top-12 bg-black bg-opacity-90 text-white px-4 py-3 rounded-lg text-sm shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-64">
+            <div className="space-y-2">
+              <div className="font-semibold mb-2 border-b border-gray-500 pb-2">Controls</div>
+              <div>• Left click + drag to draw</div>
+              <div>• Scroll to zoom</div>
+              <div>• Shift/Ctrl/Right-click to pan</div>
+              <div className="font-semibold mt-3 mb-2 border-b border-gray-500 pb-2">Current Settings</div>
+              <div>• Tool: <span className="font-mono">{state.currentTool}</span></div>
+              <div>• Color: <span className="font-mono">{state.color}</span></div>
+              <div>• Size: <span className="font-mono">{state.brushSize}px</span></div>
+              <div>• Zoom: <span className="font-mono">{Math.round(state.zoom * 100)}%</span></div>
+            </div>
           </div>
-        </div>
-
-        {/* Status Bar */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white px-3 py-1 rounded text-xs">
-          Tool: {state.currentTool} | Color: {state.color} | Size: {state.brushSize}px | Zoom: {Math.round(state.zoom * 100)}%
         </div>
       </div>
     </div>
