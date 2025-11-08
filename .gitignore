@@ -42,3 +42,6 @@ Thumbs.db
 
 # Misc
 *.local
+
+# Netlify
+.netlify/

@@ -10,7 +10,7 @@ interface CanvasProps {
 export const Canvas: React.FC<CanvasProps> = ({ drawingState, onStateChange, className }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [canvasConfig, setCanvasConfig] = useState<CanvasConfig>({ width: 0, height: 0, dpr: 1 });
   const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null);
   const [textInputRef, setTextInputRef] = useState<HTMLInputElement | null>(null);
@@ -52,9 +52,30 @@ export const Canvas: React.FC<CanvasProps> = ({ drawingState, onStateChange, cla
     const visibleEndX = pan.x + width / zoom;
     const visibleEndY = pan.y + height / zoom;
     
-    // Grid spacing in world coordinates (20px minor, 100px major)
-    const minorGridSize = 20;
-    const majorGridSize = 100;
+    // Adaptive grid spacing based on zoom level
+    // When zoomed out, increase grid spacing to reduce line count
+    let minorGridSize = 20;
+    let majorGridSize = 100;
+    
+    // Scale grid size when zoomed out to maintain performance
+    if (zoom < 0.5) {
+      minorGridSize = 100;
+      majorGridSize = 500;
+    } else if (zoom < 0.75) {
+      minorGridSize = 50;
+      majorGridSize = 200;
+    }
+    
+    // Limit the number of grid lines to prevent performance issues
+    const maxLinesPerAxis = 100;
+    const visibleWidth = visibleEndX - visibleStartX;
+    const visibleHeight = visibleEndY - visibleStartY;
+    
+    // Adjust grid size if there would be too many lines
+    while (visibleWidth / minorGridSize > maxLinesPerAxis || visibleHeight / minorGridSize > maxLinesPerAxis) {
+      minorGridSize *= 2;
+      majorGridSize *= 2;
+    }
     
     // Calculate starting grid lines
     const startX = Math.floor(visibleStartX / minorGridSize) * minorGridSize;
@@ -65,53 +86,54 @@ export const Canvas: React.FC<CanvasProps> = ({ drawingState, onStateChange, cla
     // Save context state
     ctx.save();
     
-    // Draw minor grid lines (every 20px)
+    // Only draw minor grid when zoomed in enough to see them clearly
+    if (zoom >= 0.5) {
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 1 / zoom;
+      ctx.lineCap = 'butt';
+      
+      // Use beginPath once and moveTo/lineTo for better performance
+      ctx.beginPath();
+      
+      // Draw vertical minor grid lines
+      for (let x = startX; x <= endX; x += minorGridSize) {
+        if (Math.abs(x % majorGridSize) < 0.001) continue;
+        ctx.moveTo(x, visibleStartY);
+        ctx.lineTo(x, visibleEndY);
+      }
+      
+      // Draw horizontal minor grid lines
+      for (let y = startY; y <= endY; y += minorGridSize) {
+        if (Math.abs(y % majorGridSize) < 0.001) continue;
+        ctx.moveTo(visibleStartX, y);
+        ctx.lineTo(visibleEndX, y);
+      }
+      
+      ctx.stroke();
+    }
+    
+    // Draw major grid lines (always visible)
     ctx.strokeStyle = '#e0e0e0';
-    ctx.globalAlpha = 0.2; // Improved visibility opacity
-    ctx.lineWidth = 1 / zoom; // Scale line width with zoom
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1.5 / zoom;
     ctx.lineCap = 'butt';
     
-    // Draw vertical minor grid lines
-    for (let x = startX; x <= endX; x += minorGridSize) {
-      // Skip major grid lines here, they'll be drawn separately
-      if (Math.abs(x % majorGridSize) < 0.001) continue;
-      
-      ctx.beginPath();
-      ctx.moveTo(x, visibleStartY);
-      ctx.lineTo(x, visibleEndY);
-      ctx.stroke();
-    }
-    
-    // Draw horizontal minor grid lines
-    for (let y = startY; y <= endY; y += minorGridSize) {
-      // Skip major grid lines here, they'll be drawn separately
-      if (Math.abs(y % majorGridSize) < 0.001) continue;
-      
-      ctx.beginPath();
-      ctx.moveTo(visibleStartX, y);
-      ctx.lineTo(visibleEndX, y);
-      ctx.stroke();
-    }
-    
-    // Draw major grid lines (every 100px)
-    ctx.globalAlpha = 0.25; // Enhanced visibility for major lines
-    ctx.lineWidth = 1.5 / zoom; // Thicker for major lines
+    ctx.beginPath();
     
     // Draw vertical major grid lines
-    for (let x = startX; x <= endX; x += majorGridSize) {
-      ctx.beginPath();
+    for (let x = Math.floor(visibleStartX / majorGridSize) * majorGridSize; x <= visibleEndX; x += majorGridSize) {
       ctx.moveTo(x, visibleStartY);
       ctx.lineTo(x, visibleEndY);
-      ctx.stroke();
     }
     
     // Draw horizontal major grid lines
-    for (let y = startY; y <= endY; y += majorGridSize) {
-      ctx.beginPath();
+    for (let y = Math.floor(visibleStartY / majorGridSize) * majorGridSize; y <= visibleEndY; y += majorGridSize) {
       ctx.moveTo(visibleStartX, y);
       ctx.lineTo(visibleEndX, y);
-      ctx.stroke();
     }
+    
+    ctx.stroke();
     
     // Restore context state
     ctx.restore();
@@ -212,30 +234,31 @@ export const Canvas: React.FC<CanvasProps> = ({ drawingState, onStateChange, cla
     e.preventDefault();
     const point = getCanvasPoint(e.clientX, e.clientY);
     
-    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
-      // Middle mouse or Ctrl+Left mouse for panning
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && e.ctrlKey) || (e.button === 0 && e.shiftKey)) {
+      // Middle mouse, right mouse, Ctrl+Left mouse, or Shift+Left mouse for panning
       setIsDragging(true);
-      setDragStart(point);
+      setDragStart({ x: e.clientX, y: e.clientY });
     } else {
       startDrawing(point);
     }
   }, [getCanvasPoint, startDrawing]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const point = getCanvasPoint(e.clientX, e.clientY);
-    
     if (isDragging) {
-      const deltaX = dragStart.x - point.x;
-      const deltaY = dragStart.y - point.y;
+      // Use screen coordinates for panning to avoid zoom/pan calculation issues
+      const deltaX = (e.clientX - dragStart.x) / drawingState.zoom;
+      const deltaY = (e.clientY - dragStart.y) / drawingState.zoom;
+      
       onStateChange({
         ...drawingState,
         pan: {
-          x: drawingState.pan.x + deltaX,
-          y: drawingState.pan.y + deltaY
+          x: drawingState.pan.x - deltaX,
+          y: drawingState.pan.y - deltaY
         }
       });
-      setDragStart(point);
+      setDragStart({ x: e.clientX, y: e.clientY });
     } else {
+      const point = getCanvasPoint(e.clientX, e.clientY);
       continueDrawing(point);
     }
   }, [getCanvasPoint, continueDrawing, isDragging, dragStart, drawingState, onStateChange]);
@@ -471,6 +494,7 @@ export const Canvas: React.FC<CanvasProps> = ({ drawingState, onStateChange, cla
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
         style={{ touchAction: 'none' }}
       />
       
